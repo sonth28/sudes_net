@@ -113,7 +113,7 @@ class products
                         http_response_code(200);
                         $success = array(
                             "code" => http_response_code(200),
-                            "status" => false,
+                            "status" => true,
                             "message" => "Create product success."
                         );
                         echo json_encode($success);
