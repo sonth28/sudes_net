@@ -11,13 +11,13 @@ class authentication
     {
         $this->db = new config();
         $this->dbConnect = $this->db->connect();
-        var_dump($_REQUEST);
         if (!empty($_REQUEST['name']) && !empty($_REQUEST['password']) && !empty($_REQUEST['email'])) {
             $name = $_REQUEST['name'];
             $password = $_REQUEST['password'];
             $email = $_REQUEST['email'];
             $duplicate = $this->dbConnect->query("SELECT * FROM users WHERE email = '$email'");
             if ($duplicate->num_rows > 0) {
+                error_log(date("Y-m-d H:i:s")." Registered fail\r\n", 3, "../log/error_log.log");
                 http_response_code(404);
                 $error = array(
                     "code" => http_response_code(404),
@@ -33,21 +33,23 @@ class authentication
                     http_response_code(200);
                     $success = array(
                         "code" => http_response_code(200),
-                        "status" => false,
+                        "status" => "Success",
                         "message" => "Successfully registered."
                     );
                     echo json_encode($success);
                 } else {
+                    error_log(date("Y-m-d H:i:s")." Registered fail\r\n", 3, "../log/error_log.log");
                     http_response_code(404);
                     $error = array(
                         "code" => http_response_code(404),
                         "status" => false,
-                        "message" => "Error registering."
+                        "message" => "Error registered."
                     );
                     echo json_encode($error);
                 }
             }
         } else {
+            error_log(date("Y-m-d H:i:s")." Not Authorized\r\n", 3, "../log/error_log.log");
             http_response_code(404);
             $error = array(
                 "code" => http_response_code(404),
@@ -66,22 +68,35 @@ class authentication
         if ($this->dbConnect == NULL) {
             $this->db->sendResponse(503,'{“error_message”:'.$this->db->getStatusCodeMessage(503).'}');
         } else {
-            var_dump($_POST, 576);
-            if (!empty($_REQUEST['email']) && !empty($_REQUEST['password'])) {
+            if (!empty($_POST['email']) && !empty($_POST['password'])) {
                 $email = $_REQUEST['email'];
                 $password = $_REQUEST['password'];
-                $password_hash = md5($password);
-                $sql = "SELECT * FROM users WHERE email = '$email' AND password = '$password_hash'";
+                $sql = "SELECT * FROM users WHERE email = '$email'";
                 $user = $this->dbConnect->query($sql);
                 if ($user->num_rows > 0) {
-
-
+                    if (password_verify($password, $user->fetch_assoc()['password'])) {
+                        ob_start();
+                        session_start();
+                        $token = bin2hex(random_bytes(32));
+                        $_SESSION['token'] = $token;
+                        $this->db->sendResponse(200, '{"status": "success","message": "Login successfully","token":' . json_encode($token) . '}');
+                    } else {
+                        error_log(date("Y-m-d H:i:s")." Login fail\r\n", 3, "../log/error_log.log");
+                        http_response_code(404);
+                        $error = array(
+                            "code" => http_response_code(404),
+                            "status" => false,
+                            "message" => "User or password is not correct."
+                        );
+                        echo json_encode($error);
+                    }
                 } else {
+                    error_log(date("Y-m-d H:i:s")." Login fail\r\n", 3, "../log/error_log.log");
                     http_response_code(404);
                     $error = array(
                         "code" => http_response_code(404),
                         "status" => false,
-                        "message" => "User not found."
+                        "message" => "User or password is not correct."
                     );
                     echo json_encode($error);
                 }
